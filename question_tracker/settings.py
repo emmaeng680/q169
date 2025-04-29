@@ -26,11 +26,11 @@ SECRET_KEY = 'django-insecure---g9+92x%q(b-*xh)1)-03_^2vf@3hpt!%y%dz$_#vux&nl9eh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'tracker-app-3.onrender.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'q169.onrender.com']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://tracker-app-3.onrender.com',
-    'http://tracker-app-3.onrender.com',  # Include both HTTP and HTTPS
+    'https://q169.onrender.com',
+    'http://q169.onrender.com',  # Include both HTTP and HTTPS
     'http://localhost:8000',
     'http://127.0.0.1:8000'
 ]
