@@ -1,0 +1,35 @@
+{% extends 'tracker/base.html' %}
+{% load static %}
+
+{% block content %}
+<h1 class="mb-4">Question Collections</h1>
+
+<div class="row">
+    {% for collection in collections %}
+        <div class="col-md-6 mb-4">
+            <div class="card tab-card h-100" onclick="window.location='{% url 'collection_questions' collection.id %}'">
+                <div class="card-body text-center">
+                    <h2 class="card-title">{{ collection.name }}</h2>
+                    <p class="card-text">{{ collection.description }}</p>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No question collections available. Please add collections in the admin panel.
+            </div>
+        </div>
+    {% endfor %}
+    <!-- Image placed below the collection cards -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <img src="{% static 'tracker/images/kratos-god-of-war-.avif' %}" 
+                 alt="Kratos God of War" 
+                 class="img-fluid rounded" 
+                 style="max-height: 300px;">
+            <p class="text-muted mt-2">Prepare for coding interviews like Kratos prepares for battle!</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

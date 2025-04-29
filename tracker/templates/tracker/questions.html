@@ -1,0 +1,211 @@
+<!-- eslint-disable -->
+{% extends 'tracker/base.html' %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ collection.name }} Questions</h1>
+    <a href="{% url 'home' %}" class="btn btn-outline-primary">Back to Collections</a>
+</div>
+
+<div class="mb-3">
+    <div class="progress">
+        <div class="progress-bar bg-success" id="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+    </div>
+    <div class="d-flex justify-content-between mt-2">
+        <span>
+            <span class="badge bg-success me-1">Solved:</span>
+            <span id="solved-count">0</span>
+        </span>
+        <span>
+            <span class="badge bg-warning me-1">Total:</span>
+            <span id="total-count">0</span>
+        </span>
+    </div>
+</div>
+
+{% for topic_data in topics_with_questions %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">
+            {% if topic_data.topic %}{{ topic_data.topic.name }}{% else %}Uncategorized{% endif %}
+            <span class="badge bg-primary ms-2">{{ topic_data.questions|length }}</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            {% for question in topic_data.questions %}
+                <div class="list-group-item question-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <div class="form-check me-3">
+                                <input class="form-check-input solve-checkbox" type="checkbox" 
+                                       data-question-id="{{ question.id }}" 
+                                       {% if question.is_solved %}checked{% endif %}>
+                            </div>
+                            <a href="{{ question.link }}" target="_blank" class="question-link {% if question.is_solved %}text-decoration-line-through{% endif %}">
+                                {{ question.title }}
+                            </a>
+                        </div>
+                        <div class="review-counter">
+                            <button class="btn btn-sm btn-outline-danger reset-btn" title="Reset Counter"
+                                    data-question-id="{{ question.id }}">↺</button>
+                            <button class="btn btn-sm btn-outline-secondary decrement-btn" title="Decrease Count"
+                                    data-question-id="{{ question.id }}">−</button>
+                            <span class="counter-value" id="counter-{{ question.id }}">
+                                {{ question.review_count|default:0 }}
+                            </span>
+                            <button class="btn btn-sm btn-outline-primary increment-btn" title="Increase Count"
+                                    data-question-id="{{ question.id }}">+</button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Get CSRF token for AJAX requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Setup CSRF token for all AJAX requests
+    const csrftoken = getCookie('csrftoken');
+    
+    // Update solved and remaining counts
+    function updateCounts() {
+        const total = $('.solve-checkbox').length;
+        const solved = $('.solve-checkbox:checked').length;
+        const percentage = total > 0 ? Math.round((solved / total) * 100) : 0;
+        
+        $('#solved-count').text(solved);
+        $('#total-count').text(total);
+        $('#progress-bar').css('width', percentage + '%').attr('aria-valuenow', percentage).text(percentage + '%');
+    }
+
+    $(document).ready(function() {
+        // Initial count update
+        updateCounts();
+        
+        // Toggle solved state
+        $('.solve-checkbox').change(function() {
+            const questionId = $(this).data('question-id');
+            const isChecked = $(this).prop('checked');
+            
+            // Toggle text decoration on the question link
+            $(this).closest('.question-item').find('.question-link')
+                  .toggleClass('text-decoration-line-through', isChecked);
+            
+            // Update counts
+            updateCounts();
+            
+            // Save to server if user is logged in
+            {% if user.is_authenticated %}
+                $.ajax({
+                    url: `/toggle_solved/${questionId}/`,
+                    type: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    success: function(data) {
+                        console.log('Solved status updated:', data.is_solved);
+                    }
+                });
+            {% else %}
+                alert('Please log in to save your progress');
+            {% endif %}
+        });
+        
+        // Increment review counter
+        $('.increment-btn').click(function() {
+            const questionId = $(this).data('question-id');
+            const counterEl = $(`#counter-${questionId}`);
+            let count = parseInt(counterEl.text());
+            
+            // Increment count
+            count += 1;
+            counterEl.text(count);
+            
+            // Save to server if user is logged in
+            {% if user.is_authenticated %}
+                $.ajax({
+                    url: `/increment_review/${questionId}/`,
+                    type: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    success: function(data) {
+                        console.log('Review count updated:', data.review_count);
+                    }
+                });
+            {% else %}
+                alert('Please log in to save your progress');
+            {% endif %}
+        });
+
+        // Decrement review counter
+        $('.decrement-btn').click(function() {
+            const questionId = $(this).data('question-id');
+            const counterEl = $(`#counter-${questionId}`);
+            let count = parseInt(counterEl.text());
+            
+            // Only decrement if count is greater than 0
+            if (count > 0) {
+                count -= 1;
+                counterEl.text(count);
+                
+                // Save to server if user is logged in
+                {% if user.is_authenticated %}
+                    $.ajax({
+                        url: `/decrement_review/${questionId}/`,
+                        type: 'POST',
+                        headers: {'X-CSRFToken': csrftoken},
+                        success: function(data) {
+                            console.log('Review count updated:', data.review_count);
+                        }
+                    });
+                {% else %}
+                    alert('Please log in to save your progress');
+                {% endif %}
+            }
+        });
+
+        // Reset review counter
+        $('.reset-btn').click(function() {
+            if (confirm('Are you sure you want to reset the review counter to 0?')) {
+                const questionId = $(this).data('question-id');
+                const counterEl = $(`#counter-${questionId}`);
+                
+                // Reset count to 0
+                counterEl.text('0');
+                
+                // Save to server if user is logged in
+                {% if user.is_authenticated %}
+                    $.ajax({
+                        url: `/reset_review/${questionId}/`,
+                        type: 'POST',
+                        headers: {'X-CSRFToken': csrftoken},
+                        success: function(data) {
+                            console.log('Review count reset:', data.review_count);
+                        }
+                    });
+                {% else %}
+                    alert('Please log in to save your progress');
+                {% endif %}
+            }
+        });
+    });
+</script>
+{% endblock %}
